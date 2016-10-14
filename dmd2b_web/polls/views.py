@@ -2,13 +2,10 @@ from django.http import *
 from django.shortcuts import *
 from django.core.urlresolvers import reverse
 from django.views import generic
-from django.utils import timezone
-from django.forms.models import inlineformset_factory
-from django import forms
 from django.db.models import Q
 
 from polls.models import PatientDetails, StudyDetails, SeriesDetails, AdditionalHeaderInfo
-from polls.form import *
+from .form import PatientForm, StudyForm, SeriesForm, HeaderForm, PatientSearchForm
 
 
 ####################### Generic ListView for each model ########################
@@ -21,7 +18,7 @@ class PatientList(generic.ListView):  # it returns a list of patient
     def get_queryset(self):
         # The following command uses an 'AND' logic search and an 'OR' logic search which is represented by '|'
         return PatientDetails.objects.order_by(
-            '-PatientBirthDate').filter(Q(PatientName__startswith='P')|Q(PatientName__startswith='R'))
+            '-PatientBirthDate').filter(Q(PatientName__startswith='P') | Q(PatientName__startswith='R'))
 
 
 class StudyList(generic.ListView):
@@ -84,25 +81,38 @@ class HeaderFormView(generic.FormView):  # HeaderFormView is linked with the for
 
 
 class PatientStandaloneSearchView(generic.FormView):
+    """Basic view to display a search form."""
     form_class = PatientSearchForm
     template_name = 'polls/patient-standalone-search.html'
 
+
 class PatientSearchView(generic.ListView):
+    """This listview can be filtered thanks to the url querystring parameter.
+    We could have inherited from PatientList view, bust for the sake of simplicty, it
+    is implemented as this."""
+
     model = PatientDetails
     template_name = 'polls/patient-search.html'
 
     def get_filtering(self):
+        """Get the optional filtering value (see PatientSearchForm)"""
         return self.request.GET.get('search', None)
 
     def get_queryset(self):
+        """If we get a querystring parameter, we filter the queryset, else we return all Patients
+        ordered by reverse BirthDate."""
+
         qs = super().get_queryset()
         filtering = self.get_filtering()
         if filtering:
             qs = qs.filter(PatientName__startswith=filtering)
-        return qs
+        return qs.order_by('-PatientBirthDate')
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        ctx.update({'search_form': PatientSearchForm(), 'search_query': self.get_filtering()})
+        # We inject a form instance and the query parameter to display in template.
+        # we could pass an initial kwarg to the form iot display que query param
+        # in the search field
+        ctx.update({'search_form': PatientSearchForm(),
+                    'search_query': self.get_filtering()})
         return ctx
-
