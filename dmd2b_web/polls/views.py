@@ -11,22 +11,21 @@ from polls.models import PatientDetails, StudyDetails, SeriesDetails, Additional
 from polls.form import *
 
 
-
 ####################### Generic ListView for each model ########################
 
-class PatientList(generic.ListView): # it returns a list of patient
-    #model = PatientDetails
+class PatientList(generic.ListView):  # it returns a list of patient
+    # model = PatientDetails
     template_name = 'polls/patient.html'
     context_object_name = 'object_list'
 
     def get_queryset(self):
-        #The following command uses an 'AND' logic search and an 'OR' logic search which is represented by '|'
-        return PatientDetails.objects.order_by('-PatientBirthDate').filter(Q(PatientName__startswith='P')|Q(PatientName__startswith='R'))
-
+        # The following command uses an 'AND' logic search and an 'OR' logic search which is represented by '|'
+        return PatientDetails.objects.order_by(
+            '-PatientBirthDate').filter(Q(PatientName__startswith='P')|Q(PatientName__startswith='R'))
 
 
 class StudyList(generic.ListView):
-    #model = StudyDetails
+    # model = StudyDetails
     template_name = 'polls/study.html'
     context_object_name = 'object_list'
 
@@ -34,55 +33,76 @@ class StudyList(generic.ListView):
         return StudyDetails.objects.filter(StudyDescription__contains='MR-Brain w/o Contrast').order_by('-StudyDate')
 
 
-
 class SeriesList(generic.ListView):
-    #model = SeriesDetails
+    # model = SeriesDetails
     template_name = 'polls/serie.html'
     context_object_name = 'object_list'
 
     def get_queryset(self):
-        return SeriesDetails.objects.filter(SeriesDescription__contains='FUJI Basic Text SR for HL7 Radiological Report')
-
+        return SeriesDetails.objects.filter(
+            SeriesDescription__contains='FUJI Basic Text SR for HL7 Radiological Report')
 
 
 class HeaderList(generic.ListView):
-    #model = AdditionalHeaderInfo
+    # model = AdditionalHeaderInfo
     template_name = 'polls/header.html'
     context_object_name = 'object_list'
 
     def get_queryset(self):
-        return AdditionalHeaderInfo.objects.filter(PrimarySliceDirection__contains='sagittal').filter(ProtocolName__contains='MEMPRAGE')
-
+        return AdditionalHeaderInfo.objects.filter(PrimarySliceDirection__contains='sagittal').filter(
+            ProtocolName__contains='MEMPRAGE')
 
 
 ############################ View for the forms ################################
 
-class PatientFormView(generic.FormView): # PatientFormView is linked with the form PatientForm
+class PatientFormView(generic.FormView):  # PatientFormView is linked with the form PatientForm
     form_class = PatientForm
     model = PatientDetails
     template_name = 'polls/form.html'
-    sucess_url = '/patient/new/' #go to /polls/patient/new/
+    sucess_url = '/patient/new/'  # go to /polls/patient/new/
 
 
-
-class StudyFormView(generic.FormView): # StudyFormView is linked with the form StudyForm
+class StudyFormView(generic.FormView):  # StudyFormView is linked with the form StudyForm
     form_class = StudyForm
     model = StudyDetails
     template_name = 'polls/form.html'
-    sucess_url = '/study/new/' #go to /polls/study/new/
+    sucess_url = '/study/new/'  # go to /polls/study/new/
 
 
-
-class SeriesFormView(generic.FormView): # SeriesFormView is linked with the form SeriesForm
+class SeriesFormView(generic.FormView):  # SeriesFormView is linked with the form SeriesForm
     form_class = SeriesForm
     model = SeriesDetails
     template_name = 'polls/form.html'
-    sucess_url = '/serie/new/' #go to /polls/serie/new/
+    sucess_url = '/serie/new/'  # go to /polls/serie/new/
 
 
-
-class HeaderFormView(generic.FormView): # HeaderFormView is linked with the form HeaderForm
+class HeaderFormView(generic.FormView):  # HeaderFormView is linked with the form HeaderForm
     form_class = HeaderForm
     model = AdditionalHeaderInfo
     template_name = 'polls/form.html'
-    sucess_url = '/header/new/' #go to /polls/header/new/
+    sucess_url = '/header/new/'  # go to /polls/header/new/
+
+
+class PatientStandaloneSearchView(generic.FormView):
+    form_class = PatientSearchForm
+    template_name = 'polls/patient-standalone-search.html'
+
+class PatientSearchView(generic.ListView):
+    model = PatientDetails
+    template_name = 'polls/patient-search.html'
+
+    def get_filtering(self):
+        return self.request.GET.get('search', None)
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        filtering = self.get_filtering()
+        if filtering:
+            qs = qs.filter(PatientName__startswith=filtering)
+        return qs
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx.update({'search_form': PatientSearchForm(), 'search_query': self.get_filtering()})
+        return ctx
+
